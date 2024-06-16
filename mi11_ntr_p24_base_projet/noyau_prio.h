@@ -105,6 +105,26 @@ typedef struct {
 } NOYAU_TCB;
 
 
+/* definition d'une tache aperiodique */
+typedef struct {
+	TACHE_ADR adresse_tache;
+	void** args;
+	int nb_args;
+}tacheAperiodique;
+
+#define MAXTACHEAP 10
+
+
+/* definition du contexte d'un tache de fond*/
+/********************************************/
+
+typedef struct{
+	uint32_t  sp_ini;    		/* valeur initiale de sp           */
+	uint32_t  sp_start;   	/* valeur de base de sp pour la tache */
+	uint32_t  sp;
+	TACHE_ADR task_adr;
+} NOYAU_TDF_TCB;
+
 
 /* Prototype des fonctions */
 /***************************/
@@ -124,6 +144,7 @@ uint8_t 	tache_get_flag_tick(uint16_t id_tache);
 void 		tache_reset_flag_tick(uint16_t id_tache);
 void 		tache_set_flag_tick(uint16_t id_tache);
 void 		flag_tick_process(void);
+int 		ajoute_tache_aperiodique(TACHE_ADR adresse, void** args, int nb_args);
 
 #endif
 

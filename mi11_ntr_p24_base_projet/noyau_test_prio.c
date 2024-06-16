@@ -146,7 +146,24 @@ TACHE	tacheGen(void)
   	  }
 }
 
+void tacheap(void** args, int nb_args){
+	for(int i = 0; i < nb_args; i++){
+		printf("nb : %d\n", (int)args[i]);
+	}
+}
 
+void lol(){
+	printf("lol !!");
+	int nbs[10];
+	for(int i = 0; i < 10; i++){
+			nbs[i] = i;
+	}
+	ajoute_tache_aperiodique(tacheap, (void**)nbs, 10);
+	//delay_n_ticks(200);
+	tachedefond();
+	fin_tache();
+	return;
+}
 
 int main()
 {
@@ -160,6 +177,6 @@ int main()
     puts("Noyau preemptif");
     SET_CURSOR_POSITION(5,1);
     SAVE_CURSOR_POSITION();
-	start(tachedefond);
-  return(0);
+	start(lol);
+	return(0);
 }
