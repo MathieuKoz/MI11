@@ -30,10 +30,46 @@ NOYAU_TCB  _noyau_tcb[MAX_TACHES_NOYAU]; /* tableau des contextes               
 volatile uint16_t _tache_c;        /* numéro de tache courante              */
 uint32_t _tos;                     /* adresse du sommet de pile des tâches  */
 uint8_t _ack_timer = 1;            /* variable de détection d'appel SYSTICK */
+NOYAU_TDF_TCB _tdf_tcb;
 
 /*----------------------------------------------------------------------------*
  * fonctions du noyau                                                         *
  *----------------------------------------------------------------------------*/
+
+/*-----*/
+
+tacheAperiodique ta_array[MAXTACHEAP];
+int curTache = 0;
+int queueTache = 0;
+
+int ajoute_tache_aperiodique(TACHE_ADR adresse, void** args, int nb_args){
+	if ((curTache+1)%MAXTACHEAP == queueTache){
+		return -1;
+	}
+	tacheAperiodique* ta = &ta_array[curTache];
+	ta->adresse_tache = adresse;
+	ta->args = args;
+	ta->nb_args = nb_args;
+	curTache++;
+	curTache %= MAXTACHEAP;
+	return 0;
+}
+
+
+
+void tache_de_fond_noyeau(){
+	for(;;){
+		if(queueTache != curTache){
+			tacheAperiodique* ta = &ta_array[queueTache];
+			void (*pf)(void** args, int nb_args) = (void (*)(void **, int))ta->adresse_tache;
+			pf(ta->args, ta->nb_args);
+			queueTache++;
+			queueTache %= MAXTACHEAP;
+		}else{
+			printf("NoTache\n");
+		}
+	}
+}
 
 /*
  * termine l'execution du noyau
@@ -75,6 +111,25 @@ uint8_t _ack_timer = 1;            /* variable de détection d'appel SYSTICK */
     _unlock_();                 /* Fin section critique                     */
 }
 
+
+ void creeTdf(){
+	 _lock_();
+	 _tdf_tcb.sp_ini = _tos;
+	 _tos -= PILE_TACHE;
+	 _tdf_tcb.task_adr = tache_de_fond_noyeau;
+	 _tdf_tcb.sp_start = _tdf_tcb.sp_ini - sizeof(CONTEXTE_CPU_BASE); /* Réserver la Place pour
+																 le contexte sur la pile de la tâche */
+	 _tdf_tcb.sp_start &= 0xfffffff8;               /* Aligner au multiple de 8 inférieur   */
+	 _tdf_tcb.sp = _tdf_tcb.sp_start;
+	 CONTEXTE_CPU_BASE *c = (CONTEXTE_CPU_BASE*) _tdf_tcb.sp_start;
+	 c->pc = ((uint32_t) _tdf_tcb.task_adr) & THUMB_ADDRESS_MASK; /* Adresse de la tâche dans pc, attention au bit de poids faible*/
+	 c->lr = ((uint32_t) _tdf_tcb.task_adr);         /* Adresse de retour de la tâche dans lr */
+	 c->lr_exc = TASK_EXC_RETURN;            /* veleur initiale de retour d'exeption dans lr_exc */
+	 c->psr = TASK_PSR;                      /* veleur initiale des flags dans psr    */
+	 _unlock_();
+ }
+
+
 /*
  * demarrage du system en mode multitache
  * entre  : adresse de la tache a lancer
@@ -98,7 +153,10 @@ uint8_t _ack_timer = 1;            /* variable de détection d'appel SYSTICK */
     _tos = sp - PILE_NOYAU;          /* Haut de la pile des tâches          */
 
     /* Q2.8 : on interdit les interruptions  */
-    _irq_disable_();             
+    _irq_disable_();
+
+    creeTdf();
+
     /* Q2.9 : initialisation du timer system a 100 Hz   (voir cortex.c)    */
     systick_start(CORE_CLK / 100);
     /* Q2.10 : initialisation de l'interruption systick  (voir cortex.c) */
@@ -108,7 +166,6 @@ uint8_t _ack_timer = 1;            /* variable de détection d'appel SYSTICK */
     /* Q2.12 : on autorise les interruptions */
     _irq_enable_();
 }
-
 /*
  * creation d'une nouvelle tache
  * entre  : adresse de la tache a creer
@@ -201,11 +258,15 @@ uint8_t _ack_timer = 1;            /* variable de détection d'appel SYSTICK */
  *--------------------------------------------------------------------------*/
 uint32_t task_switch(uint32_t sp)
 {
-    NOYAU_TCB *p = &_noyau_tcb[_tache_c]; /* acces au contexte tache courante */
+	NOYAU_TCB *p = &_noyau_tcb[_tache_c]; /* acces au contexte tache courante */
+	if(_tache_c != MAX_TACHES_NOYAU){
 
-    /* Q2.26 : sauvegarde du pointeur sur le contexte sauvegardé sur la pile 
-       dans le contexte de la tache */
-    p->sp = sp;      
+	    /* Q2.26 : sauvegarde du pointeur sur le contexte sauvegardé sur la pile
+	       dans le contexte de la tache */
+	    p->sp = sp;
+	}else{
+		_tdf_tcb.sp = sp;
+	}
 
     if (_ack_timer) {
     	delay_process();
@@ -221,8 +282,8 @@ uint32_t task_switch(uint32_t sp)
     p = &_noyau_tcb[_tache_c];
     /* Q2.29 : verifie qu'une tache suivante existe, sinon arret du noyau */
     if (_tache_c == F_VIDE) {
-        printf("Plus rien à ordonnancer.\n");
-        noyau_exit();           /* Sortie du noyau                          */
+        printf("Plus rien à ordonnancer. Retour à la tache de fond\n");
+        return _tdf_tcb.sp;
     }
 
     compteurs[_tache_c]++;      /* MAJ compteur d'activations               */
@@ -234,8 +295,6 @@ uint32_t task_switch(uint32_t sp)
     } else {
         return p->sp;
     }
-	
-   
 }
 
 /*--------------------------------------------------------------------------*
@@ -355,3 +414,6 @@ void flag_tick_process(void){
 		tache_set_flag_tick(id_tache);
 	}
 }
+
+
+

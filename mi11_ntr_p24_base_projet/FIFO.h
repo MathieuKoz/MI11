@@ -26,7 +26,7 @@
  */
 typedef struct {
     // tableau qui stocke les donnees de la file
-    uint8_t tab[TAILLE_FIFO];
+	uint8_t tab[TAILLE_FIFO];
     // taille de la file
     uint8_t fifo_taille;
     // index de tete de la file
