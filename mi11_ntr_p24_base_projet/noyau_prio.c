@@ -65,8 +65,6 @@ void tache_de_fond_noyeau(){
 			pf(ta->args, ta->nb_args);
 			queueTache++;
 			queueTache %= MAXTACHEAP;
-		}else{
-			printf("NoTache\n");
 		}
 	}
 }
@@ -282,7 +280,7 @@ uint32_t task_switch(uint32_t sp)
     p = &_noyau_tcb[_tache_c];
     /* Q2.29 : verifie qu'une tache suivante existe, sinon arret du noyau */
     if (_tache_c == F_VIDE) {
-        printf("Plus rien à ordonnancer. Retour à la tache de fond\n");
+        //printf("Plus rien à ordonnancer. Retour à la tache de fond\n");
         return _tdf_tcb.sp;
     }
 

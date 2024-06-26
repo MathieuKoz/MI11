@@ -13,8 +13,6 @@
 #include "delay.h"
 #include "TERMINAL.h"
 
-TACHE	tachedefond(void);
-TACHE	tacheGen(void);
 
 #define MAX_CARA_LIGNE 80
 
@@ -42,62 +40,18 @@ uint16_t pos_x = 1;
 uint16_t pos_y = 10;
 
 
-TACHE	tachedefond(void)
-{
-	uint16_t id;
+void tacheap(void** args, int nb_args){
+	uint16_t id_parent = args[0];
+	for(int i = 0; i< 20; i++){
+		printf("-----p%d - %d\n",id_parent,i);
+		for(int j=0; j < 300000 ; j++){
 
-	SET_CURSOR_POSITION(3,1);
-	puts("------> EXEC tache de fond");
-
-	id = 3;
-		_noyau_tcb_add[id].Nb_tour = 1;
-		_noyau_tcb_add[id].wait_time = 100;
-		active(cree(tacheGen, id,  (void*)&_noyau_tcb_add[id] ));
-	id = 8;
-		_noyau_tcb_add[id].Nb_tour = 2;
-		_noyau_tcb_add[id].wait_time = 50;
-		active(cree(tacheGen, id,  (void*)&_noyau_tcb_add[id] ));
- 	id = 16;
-		_noyau_tcb_add[id].Nb_tour = 4;
-		_noyau_tcb_add[id].wait_time = 60;
-		active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-	id = 18;
-		_noyau_tcb_add[id].Nb_tour = 4;
-		_noyau_tcb_add[id].wait_time = 40;
-		active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-  	id = 24;
-		_noyau_tcb_add[id].Nb_tour = 3;
-		_noyau_tcb_add[id].wait_time = 15;
-		active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-	id = 31;
-		_noyau_tcb_add[id].Nb_tour = 3;
-		_noyau_tcb_add[id].wait_time = 15;
-			active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-	id = 32;
-		_noyau_tcb_add[id].Nb_tour = 2;
-		_noyau_tcb_add[id].wait_time = 10;
-		active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-	id = 37;
-		_noyau_tcb_add[id].Nb_tour = 3;
-		_noyau_tcb_add[id].wait_time = 10;
-		active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-	id = 40;
-		_noyau_tcb_add[id].Nb_tour = 3;
-		_noyau_tcb_add[id].wait_time = 5;
-		active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-	id = 48;
-		_noyau_tcb_add[id].Nb_tour = 5;
-		_noyau_tcb_add[id].wait_time = 2;
-		active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-	id = 56;
-		_noyau_tcb_add[id].Nb_tour = 5;
-		_noyau_tcb_add[id].wait_time = 1;
-			active(cree(tacheGen, id, (void*)&_noyau_tcb_add[id]));
-  while(1){};
+		}
+	}
+	printf("tache ap de %d finis !!!!!!!!!!!!!!!!\n",id_parent);
 }
 
-TACHE	tacheGen(void)
-{
+void tache_p(){
 	volatile NOYAU_TCB* p_tcb = NULL;
 	volatile uint16_t id_tache;
 	uint16_t i, j=1;
@@ -113,43 +67,21 @@ TACHE	tacheGen(void)
 	// on laisse du temps à la tâche de fond de démarrer toutes les tâches
 	delay_n_ticks(20);
 	while(1){
-		//id_tache = noyau_get_tc();
-  		  while(tache_get_flag_tick(id_tache) != 0){
-  			  _lock_();
-  			  for(i = POS_CHRONO; i<(POS_CHRONO+8); i++){
-  				    printf("%s%d;%d%s",CODE_ESCAPE_BASE,i, pos_x,"H");
-  			    	if((i-POS_CHRONO) == (id_tache >> 3) ){
-  			    		SET_CURSOR_POSITION( i, pos_x);
-  			    		SET_BACKGROUND_COLOR(id_tache+16);
-  			    		SET_FONT_COLOR(15);
-  			    		printf("%2d", id_tache);
-  			    		SET_BACKGROUND_COLOR(0);
-  			    	} else {
-  			    		SET_BACKGROUND_COLOR(0);
-  			    		printf("  ");
-  			    	}
-			  }
-  			  pos_x = pos_x + 2;
-			  if (pos_x > MAX_CARA_LIGNE){
-			    	pos_x = 1;
-			  }
-
-			  if (j >= Nb_tour){
-					 j = 1;
-					 delay_n_ticks(wait_time);
-			  } else {
-					 j++;
-			  }
-			  _unlock_();
-			  tache_reset_flag_tick(id_tache);
-  		  }
-  	  }
-}
-
-void tacheap(void** args, int nb_args){
-	for(int i = 0; i < nb_args; i++){
-		printf("nb : %d\n", (int)args[i]);
-	}
+		  _lock_();
+		  printf("ap %d -> %d;\n", id_tache,j);
+		  _unlock_();
+		  delay_n_ticks(100);
+		  if (j >= Nb_tour){
+				 j = 1;
+				 delay_n_ticks(wait_time);
+				 _lock_();
+				 printf("%d a finis !!!!!!\n", id_tache);
+				 _unlock_();
+				 ajoute_tache_aperiodique(tacheap, (void**)&id_tache, 1);
+		  } else {
+				 j++;
+		  }
+	  }
 }
 
 void lol(){
@@ -158,9 +90,20 @@ void lol(){
 	for(int i = 0; i < 10; i++){
 			nbs[i] = i;
 	}
-	ajoute_tache_aperiodique(tacheap, (void**)nbs, 10);
 	//delay_n_ticks(200);
-	tachedefond();
+	int id;
+	id = 3;
+		_noyau_tcb_add[id].Nb_tour = 5;
+		_noyau_tcb_add[id].wait_time = 0;
+		active(cree(tache_p, id, (void*)&_noyau_tcb_add[id]));
+	id = 8;
+			_noyau_tcb_add[id].Nb_tour = 10;
+			_noyau_tcb_add[id].wait_time = 0;
+			active(cree(tache_p, id, (void*)&_noyau_tcb_add[id]));
+	id = 16;
+			_noyau_tcb_add[id].Nb_tour = 15;
+			_noyau_tcb_add[id].wait_time = 0;
+			active(cree(tache_p, id, (void*)&_noyau_tcb_add[id]));
 	fin_tache();
 	return;
 }
